@@ -12,6 +12,8 @@
 #define BLOCK_SIZE 8
 #endif
 
+///////// Public functions /////////
+
 MemoryAllocator::HeapManager * MemoryAllocator::HeapManager::create(void * i_pMemory, size_t i_sizeMemory,
 																	unsigned int i_numDescriptors)
 {
@@ -31,12 +33,51 @@ void MemoryAllocator::HeapManager::destroy()
 
 	destroyDescriptorList(h_descriptorList);
 	h_descriptorList = nullptr;
+
+	startOfHeap = nullptr;
+	endOfHeap = nullptr;
 }
 
 MemoryAllocator::HeapManager::~HeapManager()
 {
 	destroy();
 }
+
+size_t MemoryAllocator::HeapManager::getLargestFreeBlock() const
+{
+	BlockDescriptor *currBlock = h_freeList;
+	size_t largestMemSize = 0;
+
+	while (currBlock != nullptr) {
+
+		if (currBlock->m_sizeBlock > largestMemSize) {
+
+			largestMemSize = currBlock->m_sizeBlock;
+		}
+
+		currBlock = currBlock->nextBlock;
+	}
+
+	return largestMemSize;
+}
+
+size_t MemoryAllocator::HeapManager::getTotalFreeMemory() const
+{
+	BlockDescriptor *currBlock = h_freeList;
+	size_t freeMemSize = 0;
+
+	while (currBlock != nullptr) {
+
+		freeMemSize += currBlock->m_sizeBlock;
+		currBlock = currBlock->nextBlock;
+	}
+
+	return freeMemSize;
+}
+
+
+
+///////// Protected constructor /////////
 
 MemoryAllocator::HeapManager::HeapManager(void * i_pMemory, size_t i_sizeMemory, unsigned int i_numDescriptors)
 {
@@ -54,6 +95,10 @@ MemoryAllocator::HeapManager::HeapManager(void * i_pMemory, size_t i_sizeMemory,
 	createDescriptorList(numDescriptors);
 	createFreeList();
 }
+
+
+
+///////// Private functions /////////
 
 void MemoryAllocator::HeapManager::createDescriptorList(size_t i_numDescriptors)
 {
