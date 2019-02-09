@@ -62,11 +62,11 @@ namespace MemoryAllocator
 		void CreateFixedBlockAllocator();
 
 		void fillFreelistSorted(BlockDescriptor*);
-		BlockDescriptor* combineBlocks(BlockDescriptor* prevBlock, BlockDescriptor* block);
+		BlockDescriptor* combineBlocks(BlockDescriptor* i_prevBlock, BlockDescriptor* i_block);
 		BlockDescriptor* getBlockDescriptor();
 
-		void destroyFreeList(BlockDescriptor *);
-		void destroyUsedList(BlockDescriptor *);
-		void destroyDescriptorList(BlockDescriptor *);
+		void destroyFreeList(BlockDescriptor *i_freeList);
+		void destroyUsedList(BlockDescriptor *i_usedList);
+		void destroyDescriptorList(BlockDescriptor *i_descriptorList);
 	};
 }
