@@ -59,9 +59,9 @@ namespace MemoryAllocator
 		BlockDescriptor *h_usedList, *t_usedList;
 		BlockDescriptor *h_descriptorList;
 
-		void CreateFixedBlockAllocator();
+		//void CreateFixedBlockAllocator();
 
-		void fillFreelistSorted(BlockDescriptor*);
+		void fillFreelistSorted(BlockDescriptor* i_block);
 		BlockDescriptor* combineBlocks(BlockDescriptor* i_prevBlock, BlockDescriptor* i_block);
 		BlockDescriptor* getBlockDescriptor();
 

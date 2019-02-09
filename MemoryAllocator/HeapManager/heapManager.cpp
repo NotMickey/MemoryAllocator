@@ -96,6 +96,59 @@ void MemoryAllocator::HeapManager::createFreeList()
 	h_freeList = h_descriptorList;
 }
 
+void MemoryAllocator::HeapManager::fillFreelistSorted(BlockDescriptor * i_block)
+{
+	if (h_freeList == nullptr)
+	{
+		h_freeList = i_block;
+	}
+	else if (static_cast<uint8_t*>(h_freeList->m_pBlockBase) >= static_cast<uint8_t*>(i_block->m_pBlockBase))
+	{
+		i_block->nextBlock = h_freeList;
+		h_freeList = i_block;
+	}
+	else 
+	{
+		BlockDescriptor* currBlock = h_freeList;
+
+		while (currBlock->nextBlock != nullptr && (static_cast<uint8_t*>(i_block->m_pBlockBase) > 
+														static_cast<uint8_t*>(currBlock->nextBlock->m_pBlockBase)))
+		{
+			currBlock = currBlock->nextBlock;
+		}
+
+		i_block->nextBlock = currBlock->nextBlock;
+		currBlock->nextBlock = i_block;
+	}
+}
+
+MemoryAllocator::BlockDescriptor * MemoryAllocator::HeapManager::combineBlocks(BlockDescriptor * i_prevBlock,
+																				BlockDescriptor * i_block)
+{
+	i_prevBlock->m_sizeBlock += i_block->m_sizeBlock;
+	i_prevBlock->nextBlock = i_block->nextBlock;
+	i_block->inUse = false;
+
+	return i_prevBlock;
+}
+
+MemoryAllocator::BlockDescriptor * MemoryAllocator::HeapManager::getBlockDescriptor()
+{
+	BlockDescriptor* descriptor = h_descriptorList;
+
+	while (descriptor->inUse == true && descriptor->m_pNext != nullptr) {
+
+		descriptor = descriptor->m_pNext;
+	}
+
+	if (descriptor->inUse == true)
+		return nullptr;
+
+	descriptor->inUse = true;
+
+	return descriptor;
+}
+
 void MemoryAllocator::HeapManager::destroyFreeList(BlockDescriptor *i_freeList)
 {
 	if (i_freeList != nullptr)
