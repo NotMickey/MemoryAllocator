@@ -43,6 +43,173 @@ MemoryAllocator::HeapManager::~HeapManager()
 	destroy();
 }
 
+void * MemoryAllocator::HeapManager::_alloc(size_t i_size)
+{
+	BlockDescriptor *block = getBlockDescriptor();
+
+	if (block == nullptr)
+		return nullptr;
+
+	BlockDescriptor *tempBlock = h_freeList;
+
+	while (tempBlock != nullptr)
+	{
+		if (tempBlock->m_sizeBlock > i_size)
+		{
+			block->m_pBlockBase = (static_cast<uint8_t*>(tempBlock->m_pBlockBase) + tempBlock->m_sizeBlock - i_size);
+			block->m_sizeBlock = i_size;
+			tempBlock->m_sizeBlock = tempBlock->m_sizeBlock - i_size;
+
+			block->nextBlock = nullptr;
+
+			if (h_usedList == nullptr) {
+
+				h_usedList = block;
+			}
+			else {
+
+				block->nextBlock = h_usedList;
+				h_usedList = block;
+			}
+
+			return block->m_pBlockBase;
+		}
+
+		tempBlock = tempBlock->nextBlock;
+	}
+
+	return nullptr;
+}
+
+void * MemoryAllocator::HeapManager::_alloc(size_t i_size, unsigned int i_alignment)
+{
+	BlockDescriptor *block = getBlockDescriptor();
+	size_t size = i_size;
+
+	if (block == nullptr)
+		return nullptr;
+
+	BlockDescriptor *tempBlock = h_freeList;
+
+	while (tempBlock != nullptr)
+	{
+		if (tempBlock->m_sizeBlock > i_size + i_alignment - 1)
+		{
+			void* addrPtr = (static_cast<uint8_t*>(tempBlock->m_pBlockBase) + tempBlock->m_sizeBlock - i_size);
+
+			while (reinterpret_cast<uintptr_t>(addrPtr) % i_alignment != 0)
+			{
+				addrPtr = static_cast<uint8_t*>(addrPtr) - 1;
+				size++;
+			}
+
+			block->m_pBlockBase = addrPtr;
+			block->m_sizeBlock = size;
+			tempBlock->m_sizeBlock = tempBlock->m_sizeBlock - size;
+
+			block->nextBlock = nullptr;
+
+			if (h_usedList == nullptr)
+			{
+				h_usedList = block;
+			}
+			else
+			{
+				block->nextBlock = h_usedList;
+				h_usedList = block;
+			}
+
+			return block->m_pBlockBase;
+		}
+
+		tempBlock = tempBlock->nextBlock;
+	}
+
+	return nullptr;
+}
+
+bool MemoryAllocator::HeapManager::_free(void * i_ptr)
+{
+	BlockDescriptor* tempBlock = h_usedList;
+	BlockDescriptor* prevBlock = nullptr;
+	BlockDescriptor* block;
+
+	if (i_ptr == h_usedList->m_pBlockBase)
+	{
+		block = h_usedList;
+		h_usedList = h_usedList->nextBlock;
+
+		fillFreelistSorted(block);
+		return true;
+	}
+	else
+	{
+		while (tempBlock->m_pBlockBase != i_ptr && tempBlock != nullptr)
+		{
+			prevBlock = tempBlock;
+			tempBlock = tempBlock->nextBlock;
+		}
+
+		if (tempBlock != nullptr)
+		{
+			prevBlock->nextBlock = tempBlock->nextBlock;
+			fillFreelistSorted(tempBlock);
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void MemoryAllocator::HeapManager::collect()
+{
+	BlockDescriptor* tempBlock = h_freeList;
+	BlockDescriptor* nextBlock = tempBlock->nextBlock;
+
+	while (nextBlock != nullptr)
+	{
+		if ((static_cast<uint8_t*>(tempBlock->m_pBlockBase) + tempBlock->m_sizeBlock) == static_cast<uint8_t*>(nextBlock->m_pBlockBase))
+		{
+			//Call block combining function.
+			tempBlock = combineBlocks(tempBlock, nextBlock);
+			nextBlock = tempBlock->nextBlock;
+		}
+		else
+		{
+			tempBlock = nextBlock;
+			nextBlock = nextBlock->nextBlock;
+		}
+	}
+}
+
+bool MemoryAllocator::HeapManager::Contains(void * i_ptr) const
+{
+	if (static_cast<uint8_t*>(i_ptr) >= startOfHeap && static_cast<uint8_t*>(i_ptr) <= endOfHeap)
+		return true;
+
+	return false;
+}
+
+bool MemoryAllocator::HeapManager::IsAllocated(void * i_ptr) const
+{
+	BlockDescriptor *tempBlock = h_usedList;
+
+	/*if (blockAllocator->Contains(i_ptr)) {
+		return true;
+	}*/
+
+	while (tempBlock != nullptr)
+	{
+		if (tempBlock->m_pBlockBase >= i_ptr && i_ptr < static_cast<uint8_t*>(tempBlock->m_pBlockBase) + tempBlock->m_sizeBlock)
+			return true;
+
+		tempBlock = tempBlock->nextBlock;
+	}
+
+	return false;
+}
+
 size_t MemoryAllocator::HeapManager::getLargestFreeBlock() const
 {
 	BlockDescriptor *currBlock = h_freeList;
